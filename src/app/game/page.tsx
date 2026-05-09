@@ -9,10 +9,11 @@ type GameState = 'idle' | 'selected' | 'revealed';
 type DoorType = 'car' | 'goat';
 
 export default function GamePage() {
+  const [doorCount, setDoorCount] = useState(3);
   const [doors, setDoors] = useState<DoorType[]>(['goat', 'goat', 'goat']);
   const [gameState, setGameState] = useState<GameState>('idle');
   const [selectedDoor, setSelectedDoor] = useState<number | null>(null);
-  const [hostOpenedDoor, setHostOpenedDoor] = useState<number | null>(null);
+  const [hostOpenedDoors, setHostOpenedDoors] = useState<number[]>([]);
   const [stats, setStats] = useState({ wins: 0, losses: 0 });
   const [message, setMessage] = useState('請選擇一扇門！');
   const [simCount, setSimCount] = useState(10);
@@ -28,7 +29,7 @@ export default function GamePage() {
       setStats(JSON.parse(savedStats));
     }
     initGame();
-  }, []);
+  }, [doorCount]);
 
   const clearStats = () => {
     if (confirm('確定要清除所有勝負紀錄嗎？')) {
@@ -40,28 +41,39 @@ export default function GamePage() {
   };
 
   const initGame = useCallback(() => {
-    const newDoors: DoorType[] = ['goat', 'goat', 'goat'];
-    const carIndex = Math.floor(Math.random() * 3);
+    const newDoors: DoorType[] = Array(doorCount).fill('goat');
+    const carIndex = Math.floor(Math.random() * doorCount);
     newDoors[carIndex] = 'car';
     
     setDoors(newDoors);
     setGameState('idle');
     setSelectedDoor(null);
-    setHostOpenedDoor(null);
-    setMessage('請選擇一扇門！');
-  }, []);
+    setHostOpenedDoors([]);
+    setMessage(`請從 ${doorCount} 扇門中選擇一扇！`);
+  }, [doorCount]);
 
   const handleDoorClick = (index: number) => {
     if (gameState === 'idle') {
       setSelectedDoor(index);
       setGameState('selected');
       
-      const possibleHostDoors = [0, 1, 2].filter(
-        i => i !== index && doors[i] !== 'car'
+      const carIndex = doors.indexOf('car');
+      const allIndices = Array.from({ length: doorCount }, (_, i) => i);
+      
+      const possibleHostDoors = allIndices.filter(
+        i => i !== index && i !== carIndex
       );
-      const hostChoice = possibleHostDoors[Math.floor(Math.random() * possibleHostDoors.length)];
-      setHostOpenedDoor(hostChoice);
-      setMessage(`主持人打開了 ${hostChoice + 1} 號門，裡面是山羊！你要更換選擇嗎？`);
+
+      let doorsToOpen: number[] = [];
+      if (index === carIndex) {
+        const shuffledGoats = possibleHostDoors.sort(() => Math.random() - 0.5);
+        doorsToOpen = shuffledGoats.slice(0, doorCount - 2);
+      } else {
+        doorsToOpen = possibleHostDoors;
+      }
+
+      setHostOpenedDoors(doorsToOpen);
+      setMessage(`主持人打開了 ${doorsToOpen.length} 扇門，裡面全是山羊！你要更換選擇嗎？`);
     }
   };
 
@@ -69,8 +81,8 @@ export default function GamePage() {
     let finalSelection = selectedDoor!;
     
     if (switchDoor) {
-      finalSelection = [0, 1, 2].find(
-        i => i !== selectedDoor && i !== hostOpenedDoor
+      finalSelection = Array.from({ length: doorCount }, (_, i) => i).find(
+        i => i !== selectedDoor && !hostOpenedDoors.includes(i)
       )!;
       setSelectedDoor(finalSelection);
     }
@@ -97,23 +109,25 @@ export default function GamePage() {
     const strategyName = shouldSwitch ? '更換' : '不換';
 
     if (isSkipAnimation) {
-      setMessage(`正在即時模擬${strategyName}策略 ${iterations} 次...`);
+      setMessage(`正在即時模擬 ${doorCount} 門 ${strategyName}策略 ${iterations} 次...`);
       let localWins = 0;
       let localLosses = 0;
 
-      // Small delay to let the message show up before the heavy loop
       await sleep(100);
 
       for (let i = 0; i < iterations; i++) {
-        const carIndex = Math.floor(Math.random() * 3);
-        const playerChoice = Math.floor(Math.random() * 3);
+        const carIndex = Math.floor(Math.random() * doorCount);
+        const playerChoice = Math.floor(Math.random() * doorCount);
         
         let finalSelection = playerChoice;
         if (shouldSwitch) {
-          // Host choice
-          const hostChoice = [0, 1, 2].find(idx => idx !== playerChoice && idx !== carIndex)!;
-          // Player switches
-          finalSelection = [0, 1, 2].find(idx => idx !== playerChoice && idx !== hostChoice)!;
+          if (playerChoice !== carIndex) {
+            finalSelection = carIndex;
+          } else {
+            const allIndices = Array.from({ length: doorCount }, (_, idx) => idx);
+            const otherGoat = allIndices.find(idx => idx !== playerChoice && idx !== carIndex)!;
+            finalSelection = otherGoat;
+          }
         }
 
         if (finalSelection === carIndex) {
@@ -132,42 +146,49 @@ export default function GamePage() {
         return updated;
       });
       
-      setMessage(`模擬結束！${strategyName}策略完成 ${iterations} 次。贏: ${localWins}, 輸: ${localLosses}`);
+      setMessage(`模擬結束！${doorCount} 門 ${strategyName}策略完成 ${iterations} 次。贏: ${localWins}, 輸: ${localLosses}`);
     } else {
       for (let i = 0; i < iterations; i++) {
         setMessage(`模擬${strategyName}中... 第 ${i + 1} / ${iterations} 次`);
         
-        const newDoors: DoorType[] = ['goat', 'goat', 'goat'];
-        const carIndex = Math.floor(Math.random() * 3);
-        newDoors[carIndex] = 'car';
+        const newDoors: DoorType[] = Array(doorCount).fill('goat');
+        const carIdx = Math.floor(Math.random() * doorCount);
+        newDoors[carIdx] = 'car';
         setDoors(newDoors);
         setGameState('idle');
         setSelectedDoor(null);
-        setHostOpenedDoor(null);
+        setHostOpenedDoors([]);
         
-        await sleep(300);
+        await sleep(isFastMode ? 100 : 300);
 
-        const playerChoice = Math.floor(Math.random() * 3);
+        const playerChoice = Math.floor(Math.random() * doorCount);
         setSelectedDoor(playerChoice);
         setGameState('selected');
 
-        const possibleHostDoors = [0, 1, 2].filter(
-          idx => idx !== playerChoice && newDoors[idx] !== 'car'
-        );
-        const hostChoice = possibleHostDoors[Math.floor(Math.random() * possibleHostDoors.length)];
-        setHostOpenedDoor(hostChoice);
+        const allIndices = Array.from({ length: doorCount }, (_, idx) => idx);
+        const possibleHostDoors = allIndices.filter(idx => idx !== playerChoice && idx !== carIdx);
         
-        await sleep(500);
+        let doorsToOpen: number[] = [];
+        if (playerChoice === carIdx) {
+          const shuffledGoats = possibleHostDoors.sort(() => Math.random() - 0.5);
+          doorsToOpen = shuffledGoats.slice(0, doorCount - 2);
+        } else {
+          doorsToOpen = possibleHostDoors;
+        }
+        
+        setHostOpenedDoors(doorsToOpen);
+        
+        await sleep(isFastMode ? 200 : 500);
 
         let finalSelection = playerChoice;
         if (shouldSwitch) {
-          finalSelection = [0, 1, 2].find(
-            idx => idx !== playerChoice && idx !== hostChoice
+          finalSelection = allIndices.find(
+            idx => idx !== playerChoice && !doorsToOpen.includes(idx)
           )!;
           setSelectedDoor(finalSelection);
         }
         
-        await sleep(300);
+        await sleep(isFastMode ? 100 : 300);
 
         setGameState('revealed');
         const isWin = newDoors[finalSelection] === 'car';
@@ -181,9 +202,9 @@ export default function GamePage() {
           return updated;
         });
 
-        await sleep(800);
+        await sleep(isFastMode ? 300 : 800);
       }
-      setMessage(`模擬結束！${strategyName}策略共完成 ${iterations} 次。`);
+      setMessage(`模擬結束！${doorCount} 門 ${strategyName}策略共完成 ${iterations} 次。`);
     }
 
     setIsSimulating(false);
@@ -191,18 +212,26 @@ export default function GamePage() {
 
   return (
     <div className="min-h-screen bg-slate-100 p-8 font-sans">
-      <header className="flex items-center mb-8 max-w-5xl mx-auto">
+      <header className="flex items-center mb-8 max-w-6xl mx-auto">
         <Link href="/" className="text-blue-600 font-bold mr-8 hover:underline text-lg">← 返回首頁</Link>
-        <h1 className="text-3xl font-extrabold text-slate-900">三門問題</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900">三門問題實驗室</h1>
       </header>
 
-      <main className="flex flex-col lg:flex-row gap-8 max-w-5xl mx-auto">
-        <div className="flex-1 bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center">
-          <div className="text-2xl font-semibold mb-8 text-center min-h-[3.5rem] flex items-center justify-center text-slate-800">
-            <p className="bg-slate-50 px-6 py-3 rounded-full border border-slate-100 shadow-sm">{message}</p>
+      <main className="flex flex-col xl:flex-row gap-8 max-w-7xl mx-auto">
+        <div className="flex-1 bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center overflow-hidden">
+          <div className="text-xl font-semibold mb-6 text-center min-h-[3rem] flex items-center justify-center text-slate-800 w-full">
+            <p className="bg-slate-50 px-6 py-2 rounded-full border border-slate-100 shadow-sm w-full max-w-3xl truncate">
+              {message}
+            </p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6 mb-12">
+          <div 
+            className={`grid gap-2 mb-8 w-full max-h-[60vh] overflow-y-auto p-4 justify-items-center
+              ${doorCount <= 5 ? 'grid-cols-3 md:grid-cols-5' : 
+                doorCount <= 20 ? 'grid-cols-5 md:grid-cols-10' : 
+                'grid-cols-5 md:grid-cols-10 lg:grid-cols-10'}
+            `}
+          >
             {doors.map((type, i) => (
               <Door
                 key={i}
@@ -210,10 +239,11 @@ export default function GamePage() {
                 type={type}
                 isOpen={gameState === 'revealed'}
                 isSelected={selectedDoor === i}
-                isHostOpened={hostOpenedDoor === i}
+                isHostOpened={hostOpenedDoors.includes(i)}
                 onClick={() => handleDoorClick(i)}
                 disabled={gameState !== 'idle' || isSimulating}
                 isGameRevealed={gameState === 'revealed'}
+                size={doorCount > 20 ? 'small' : 'normal'}
               />
             ))}
           </div>
@@ -247,7 +277,26 @@ export default function GamePage() {
           </div>
         </div>
 
-        <aside className="w-full lg:w-72 flex flex-col gap-6">
+        <aside className="w-full xl:w-80 flex flex-col gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-md">
+            <h3 className="mt-0 mb-4 border-b-2 border-slate-100 pb-2 text-lg font-bold text-slate-800">遊戲設定</h3>
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <label className="text-sm text-slate-500 font-semibold">門的數量: {doorCount}</label>
+              </div>
+              <input 
+                type="range" 
+                min="3" 
+                max="100" 
+                value={doorCount} 
+                onChange={(e) => setDoorCount(parseInt(e.target.value))}
+                disabled={gameState !== 'idle' || isSimulating}
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">增加門的數量能讓你更清楚感受到「換門」的優勢。</p>
+            </div>
+          </div>
+
           <Stats wins={stats.wins} losses={stats.losses} />
           
           <button 
