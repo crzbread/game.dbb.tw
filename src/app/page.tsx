@@ -1,65 +1,22 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-slate-100 font-sans">
+      <main className="text-center max-w-2xl bg-white p-12 rounded-2xl shadow-xl">
+        <h1 className="text-4xl md:text-5xl font-extrabold mb-6 text-slate-900 tracking-tight">
+          三門問題遊戲 <span className="text-blue-600 block sm:inline">(Monty Hall)</span>
+        </h1>
+        <p className="text-xl leading-relaxed mb-10 text-slate-600">
+          這是一個經典的機率遊戲。你有三扇門，其中一扇門後是一輛汽車，另外兩扇門後是山羊。
+          選中汽車就能帶回家！
+        </p>
+        <Link 
+          href="/game" 
+          className="inline-block bg-blue-600 text-white px-10 py-4 rounded-xl text-xl font-bold transition-all hover:bg-blue-700 hover:-translate-y-1 active:translate-y-0 shadow-lg"
+        >
+          開始挑戰
+        </Link>
       </main>
     </div>
   );
